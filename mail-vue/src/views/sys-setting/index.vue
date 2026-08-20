@@ -290,6 +290,21 @@
             </div>
           </div>
 
+          <div class="settings-card">
+            <div class="card-title">{{ $t('emailWebhook') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div><span>{{ $t('emailWebhook') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.emailWebhookStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click.stop="openEmailWebhookSetting">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Turnstile Verification Card -->
           <div class="settings-card">
             <div class="card-title">{{ $t('turnstileSetting') }}</div>
@@ -584,6 +599,44 @@
           </div>
         </template>
       </el-dialog>
+      <Teleport to="body">
+        <div
+            v-if="emailWebhookShow"
+            class="email-webhook-modal"
+            role="dialog"
+            aria-modal="true"
+            tabindex="-1"
+            @click.self="closeEmailWebhookSetting"
+        >
+          <div class="email-webhook-modal__panel" @click.stop>
+            <div class="email-webhook-modal__header">
+              <div class="forward-head">
+                <span class="forward-set-title">{{ $t('emailWebhook') }}</span>
+                <el-tooltip effect="dark" :content="$t('emailWebhookDesc')">
+                  <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                </el-tooltip>
+              </div>
+              <button type="button" class="email-webhook-modal__close" @click="closeEmailWebhookSetting">
+                <Icon icon="ep:close" width="18" height="18"/>
+              </button>
+            </div>
+            <div class="email-webhook-modal__body">
+              <el-input v-model="emailWebhookForm.url" :placeholder="$t('emailWebhookUrl')"/>
+              <el-input v-model="emailWebhookForm.toLike" :placeholder="$t('emailWebhookToLikeDesc')"/>
+              <el-input v-model="emailWebhookForm.sendLike" :placeholder="$t('emailWebhookSendLikeDesc')"/>
+              <el-input v-model="emailWebhookForm.secret" type="password" show-password
+                        :placeholder="setting.emailWebhookSecret || $t('emailWebhookSecretDesc')"/>
+            </div>
+            <div class="email-webhook-modal__footer">
+              <el-switch v-model="emailWebhookForm.status" :active-value="0" :inactive-value="1"
+                         :active-text="$t('enable')" :inactive-text="$t('disable')"/>
+              <el-button :loading="settingLoading" type="primary" @click="saveEmailWebhook">
+                {{ $t('save') }}
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
       <el-dialog
           v-model="thirdEmailShow"
           class="forward-dialog"
@@ -854,6 +907,7 @@ const aiCodeFilterShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const tgSettingShow = ref(false)
+const emailWebhookShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
 const forwardRulesShow = ref(false)
@@ -942,6 +996,14 @@ const ruleEmail = ref([])
 const tgMsgFrom = ref('')
 const tgMsgTo = ref('')
 const tgMsgText = ref('')
+
+const emailWebhookForm = reactive({
+  status: 1,
+  url: '',
+  secret: '',
+  toLike: '',
+  sendLike: ''
+})
 
 const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}, {label: t('onlyName'), value:'only-name'}]
 const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
@@ -1078,6 +1140,51 @@ function openTgSetting() {
     tgChatId.value.push(...list)
   }
   tgSettingShow.value = true
+}
+
+function resetEmailWebhookForm() {
+  emailWebhookForm.status = setting.value.emailWebhookStatus ?? 1
+  emailWebhookForm.url = setting.value.emailWebhookUrl || ''
+  emailWebhookForm.secret = ''
+  emailWebhookForm.toLike = setting.value.emailWebhookToLike || ''
+  emailWebhookForm.sendLike = setting.value.emailWebhookSendLike || ''
+}
+
+function openEmailWebhookSetting() {
+  resetEmailWebhookForm()
+  emailWebhookShow.value = true
+}
+
+function closeEmailWebhookSetting() {
+  emailWebhookShow.value = false
+  resetEmailWebhookForm()
+}
+
+function saveEmailWebhook() {
+  const url = emailWebhookForm.url.trim()
+  const toLike = emailWebhookForm.toLike.trim()
+  const sendLike = emailWebhookForm.sendLike.trim()
+  const hasSecret = Boolean(emailWebhookForm.secret.trim() || setting.value.emailWebhookSecret)
+
+  if (emailWebhookForm.status === 0 && (!url || !toLike || !sendLike || !hasSecret)) {
+    ElMessage({
+      message: t('emailWebhookIncomplete'),
+      type: 'error',
+      plain: true
+    })
+    return
+  }
+
+  const form = {
+    emailWebhookStatus: emailWebhookForm.status,
+    emailWebhookUrl: url,
+    emailWebhookToLike: toLike,
+    emailWebhookSendLike: sendLike
+  }
+  if (emailWebhookForm.secret.trim()) {
+    form.emailWebhookSecret = emailWebhookForm.secret.trim()
+  }
+  editSetting(form)
 }
 
 function openNoticePopupSetting() {
@@ -1456,6 +1563,7 @@ function change(e) {
   delete settingForm.s3AccessKey
   delete settingForm.s3SecretKey
   delete settingForm.tgBotToken
+  delete settingForm.emailWebhookSecret
   delete settingForm.resendTokens
   editSetting(settingForm, false)
 }
@@ -1499,6 +1607,7 @@ function editSetting(settingForm, refreshStatus = true) {
     resendTokenFormShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
+    emailWebhookShow.value = false
     thirdEmailShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
@@ -1763,6 +1872,69 @@ function editSetting(settingForm, refreshStatus = true) {
     margin-right: 20px !important;
     margin-left: 20px !important;
   }
+}
+
+:global(.email-webhook-modal) {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 10vh 20px 40px;
+  background: var(--el-overlay-color-lighter);
+}
+
+:global(.email-webhook-modal__panel) {
+  box-sizing: border-box;
+  width: min(500px, calc(100vw - 40px));
+  max-height: calc(90vh - 40px);
+  overflow: auto;
+  padding: 16px;
+  color: var(--el-text-color-primary);
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--el-border-radius-base);
+  box-shadow: var(--el-box-shadow-dark);
+}
+
+:global(.email-webhook-modal__header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+}
+
+:global(.email-webhook-modal__close) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--el-border-radius-base);
+}
+
+:global(.email-webhook-modal__close:hover) {
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-light);
+}
+
+:global(.email-webhook-modal__body) {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+:global(.email-webhook-modal__footer) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
 }
 
 .forward-dialog {

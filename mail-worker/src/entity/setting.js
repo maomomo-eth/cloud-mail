@@ -52,6 +52,11 @@ export const setting = sqliteTable('setting', {
 	blackFrom: text('black_from').default('').notNull(),
 	aiCode: integer('ai_code').default(1).notNull(),
 	aiCodeFilter: text('ai_code_filter').default('').notNull(),
-	syncDelete: integer('sync_delete').default(1).notNull()
+	syncDelete: integer('sync_delete').default(1).notNull(),
+	emailWebhookStatus: integer('email_webhook_status').default(1).notNull(),
+	emailWebhookUrl: text('email_webhook_url').default('').notNull(),
+	emailWebhookSecret: text('email_webhook_secret').default('').notNull(),
+	emailWebhookToLike: text('email_webhook_to_like').default('').notNull(),
+	emailWebhookSendLike: text('email_webhook_send_like').default('').notNull()
 });
 export default setting

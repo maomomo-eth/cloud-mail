@@ -11,11 +11,13 @@ import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
+import emailWebhookService from '../service/email-webhook-service';
 
 export async function email(message, env, ctx) {
 
 	try {
 
+		const setting = await settingService.query({ env });
 		const {
 			receive,
 			tgChatId,
@@ -31,7 +33,7 @@ export async function email(message, env, ctx) {
 			blackFrom,
 			aiCode,
 			aiCodeFilter
-		} = await settingService.query({ env });
+		} = setting;
 
 		if (receive === settingConst.receive.CLOSE) {
 			message.setReject('Service suspended');
@@ -145,6 +147,16 @@ export async function email(message, env, ctx) {
 		}
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
+
+		const webhookConfig = emailWebhookService.config(setting);
+		if (webhookConfig && emailWebhookService.matches(webhookConfig, emailRow)) {
+			const webhookPromise = emailWebhookService.notify(webhookConfig, emailRow);
+			if (ctx && typeof ctx.waitUntil === 'function') {
+				ctx.waitUntil(webhookPromise);
+			} else {
+				await webhookPromise;
+			}
+		}
 
 
 		if (ruleType === settingConst.ruleType.RULE) {

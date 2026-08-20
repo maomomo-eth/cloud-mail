@@ -30,6 +30,7 @@ const dbInit = {
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
 		await this.v3_1DB(c);
+		await this.v3_2DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -39,6 +40,24 @@ const dbInit = {
 			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN sync_delete INTEGER NOT NULL DEFAULT 0;`).run();
 		} catch (e) {
 			console.warn(`跳过字段：${e.message}`);
+		}
+	},
+
+	async v3_2DB(c) {
+		const addColumnSQLList = [
+			`ALTER TABLE setting ADD COLUMN email_webhook_status INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE setting ADD COLUMN email_webhook_url TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN email_webhook_secret TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN email_webhook_to_like TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN email_webhook_send_like TEXT NOT NULL DEFAULT '';`
+		];
+
+		for (const sql of addColumnSQLList) {
+			try {
+				await c.env.db.prepare(sql).run();
+			} catch (e) {
+				console.warn(`跳过字段：${e.message}`);
+			}
 		}
 	},
 

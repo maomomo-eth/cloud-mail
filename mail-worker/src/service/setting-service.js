@@ -101,6 +101,7 @@ const settingService = {
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
 		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
+		settingRow.emailWebhookSecret = settingRow.emailWebhookSecret ? `${settingRow.emailWebhookSecret.slice(0, 6)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
 		settingRow.hasCfEmail = !!c.env.email
 
@@ -126,6 +127,36 @@ const settingService = {
 
 	async set(c, params) {
 		const settingData = await this.query(c);
+		if (Object.prototype.hasOwnProperty.call(params, 'emailWebhookSecret') && String(params.emailWebhookSecret || '').includes('******')) {
+			delete params.emailWebhookSecret;
+		}
+
+		const emailWebhookStatus = Number(params.emailWebhookStatus ?? settingData.emailWebhookStatus ?? 1);
+		if (![0, 1].includes(emailWebhookStatus)) {
+			throw new BizError('邮件 Webhook 状态无效');
+		}
+
+		if (emailWebhookStatus === 0) {
+			const webhookURL = String(params.emailWebhookUrl ?? settingData.emailWebhookUrl ?? '').trim();
+			const webhookSecret = String(params.emailWebhookSecret ?? settingData.emailWebhookSecret ?? '').trim();
+			const webhookToLike = String(params.emailWebhookToLike ?? settingData.emailWebhookToLike ?? '').trim();
+			const webhookSendLike = String(params.emailWebhookSendLike ?? settingData.emailWebhookSendLike ?? '').trim();
+
+			if (!webhookURL || !webhookSecret || !webhookToLike || !webhookSendLike) {
+				throw new BizError('启用邮件 Webhook 前请填写完整的地址、密钥和匹配规则');
+			}
+
+			try {
+				const parsedURL = new URL(webhookURL);
+				if (!['http:', 'https:'].includes(parsedURL.protocol)) {
+					throw new Error('protocol');
+				}
+			} catch (e) {
+				throw new BizError('邮件 Webhook 地址无效');
+			}
+		}
+
+		params.emailWebhookStatus = emailWebhookStatus;
 		let resendTokens = { ...settingData.resendTokens, ...params.resendTokens };
 		Object.keys(resendTokens).forEach(domain => {
 			if (!resendTokens[domain]) delete resendTokens[domain];

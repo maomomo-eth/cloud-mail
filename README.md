@@ -62,6 +62,8 @@
 
 - **📡 开放API**：支持使用API批量生成用户，多条件查询邮件 
 
+- **🔗 邮件 Webhook**：邮件接收后可按收件人和发件人规则推送到外部程序
+
 - **🔢 验证码识别**：使用Workers AI，自动识别邮件验证码 
 
 - **📈 数据可视化**：使用ECharts对系统数据详情，用户邮件增长可视化显示
@@ -149,10 +151,24 @@ cloud-mail
 
 本项目采用 [MIT](LICENSE) 许可证	
 
+## 邮件 Webhook
+
+`mail-worker` 支持在邮件完成入库后，按 SQL `LIKE` 风格规则匹配收件人和发件人，并将邮件正文推送到外部服务。
+
+请登录管理员后台，在“系统设置 -> 邮件 Webhook”中配置并启用：
+
+- Webhook 地址；
+- Webhook 密钥；
+- 收件人匹配规则；
+- 发件人匹配规则。
+
+配置会保存到 D1 的 `setting` 表，并同步缓存到 KV 的 `setting:`。因此不需要把实际域名、地址、密钥或匹配规则写入公开的 `wrangler.toml`。邮件 Webhook 关闭或配置不完整时不会发送请求。
+
+请求会携带 `X-Cloud-Mail-Webhook-Secret` 和 `X-Cloud-Mail-Event-ID` 请求头，正文包含 `emailId`、收件箱、发件人、主题、HTML、纯文本和时间等字段。投递失败时最多重试 3 次。
+
+如果外部服务本身负责 Telegram 推送，请关闭 Cloud Mail 设置中的内置 Telegram Bot 转发，避免同一封邮件重复推送。
+
 
 ## 交流
 
 [Telegram](https://t.me/cloud_mail_tg)
-
-
-
